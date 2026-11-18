@@ -1,2 +1,3 @@
 pub mod local;
-\npub mod mcf;\n
+
+pub mod mcf;
