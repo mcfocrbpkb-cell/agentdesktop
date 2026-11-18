@@ -32,6 +32,7 @@ const RECENT_AUTH: i64 = 15 * 60;
 pub struct McfAccess {
     client: Client,
     login_url: String,
+    logout_url: String,
     jwks_url: String,
     issuer: String,
     audience: String,
@@ -94,6 +95,7 @@ impl McfAccess {
         let provider = Self {
             client,
             login_url: format!("{}/v1/auth/ad/login", config.base_url.trim_end_matches('/')),
+            logout_url: format!("{}/v1/auth/logout", config.base_url.trim_end_matches('/')),
             jwks_url: config.jwks_url,
             issuer: config.issuer,
             audience: config.audience,
@@ -244,7 +246,26 @@ async fn login(State(provider): State<McfAccess>, Form(form): Form<LoginForm>) -
     response
 }
 
-async fn logout() -> Response {
+async fn logout(headers: HeaderMap, State(provider): State<McfAccess>) -> Response {
+    if let Some(token) = McfAccess::cookie(&headers) {
+        // Revoke the server-side MCF session before clearing the browser cookie.
+        // A stolen session token must not remain usable after an explicit logout.
+        match provider
+            .client
+            .post(&provider.logout_url)
+            .bearer_auth(&token)
+            .send()
+            .await
+        {
+            Ok(response) if response.status().is_success() => {}
+            Ok(response) => {
+                warn!(status = response.status().as_u16(), "MCF session revocation returned a non-success status");
+            }
+            Err(error) => {
+                warn!(%error, "MCF session revocation request failed");
+            }
+        }
+    }
     let mut response = StatusCode::NO_CONTENT.into_response();
     response.headers_mut().insert(header::SET_COOKIE, McfAccess::clear_cookie());
     response
