@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 use agentdesktop_controller::{
     application,
     database::Database,
-    management::{self, Extensions},
+    management::Extensions,
     management::auth::Provider,
     management::auth::providers::mcf::{Config as McfAuthConfig, McfAccess},
 };
@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let _log_flush = telemetry::setup_logging("info", false, None)?;
     let config = config::load_controller(&args.config)?;
-    let database = Database::connect(&config.database_url).await?
+    let database = Database::connect(&config.database_url).await?;
     let authentication: Option<Arc<dyn Provider>> = match &config.admin_access {
         config::ControllerAdminAccess::Local => None,
         config::ControllerAdminAccess::Authenticated(admin) => {
