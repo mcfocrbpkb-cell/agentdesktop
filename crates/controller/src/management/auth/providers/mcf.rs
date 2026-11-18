@@ -247,26 +247,33 @@ async fn login(State(provider): State<McfAccess>, Form(form): Form<LoginForm>) -
 }
 
 async fn logout(headers: HeaderMap, State(provider): State<McfAccess>) -> Response {
+    let mut revocation_ok = true;
     if let Some(token) = McfAccess::cookie(&headers) {
         // Revoke the server-side MCF session before clearing the browser cookie.
         // A stolen session token must not remain usable after an explicit logout.
-        match provider
+        revocation_ok = match provider
             .client
             .post(&provider.logout_url)
             .bearer_auth(&token)
             .send()
             .await
         {
-            Ok(response) if response.status().is_success() => {}
+            Ok(response) if response.status().is_success() => true,
             Ok(response) => {
                 warn!(status = response.status().as_u16(), "MCF session revocation returned a non-success status");
+                false
             }
             Err(error) => {
                 warn!(%error, "MCF session revocation request failed");
+                false
             }
-        }
+        };
     }
-    let mut response = StatusCode::NO_CONTENT.into_response();
+    let mut response = if revocation_ok {
+        StatusCode::NO_CONTENT.into_response()
+    } else {
+        Error(StatusCode::SERVICE_UNAVAILABLE, "mcf_session_revocation_unavailable").into_response()
+    };
     response.headers_mut().insert(header::SET_COOKIE, McfAccess::clear_cookie());
     response
 }
