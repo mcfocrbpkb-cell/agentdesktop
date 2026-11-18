@@ -1,0 +1,49 @@
+# MCF AI-KU controller administration integration
+#
+# This is a production-oriented example. Replace every endpoint with the
+# MCF-approved HTTPS address. Do not invent AD group or OIDC values.
+
+adminAccess:
+  mode: authenticated
+  publicUrl: https://agentdesktop.mcf.example/
+  transport:
+    mode: proxy
+  provider:
+    type: mcf
+    base_url: https://ai-ku.mcf.example
+    jwks_url: https://ai-ku.mcf.example/.well-known/jwks.json
+    issuer: https://ai-ku.mcf.example/
+    audience: mcf-ai-ku
+    request_timeout_seconds: 8
+
+adminListen: 127.0.0.1:8080
+
+databaseUrl: postgres://agentdesktop_controller@127.0.0.1/agentdesktop
+
+fleetListen: 0.0.0.0:8443
+
+fleetLimits:
+  maxConnections: 50000
+  connectionsPerAddress: 4096
+  maxMessageBytes: 4194304
+  enrollmentInFlight: 64
+  enrollmentBurst: 60
+  enrollmentRefill: 1s
+  deviceMessageBurst: 600
+  deviceMessageRefill: 50ms
+
+# Keep the existing OIDC enrollment configuration used by the deployment.
+# MCF admin authentication is separate from device enrollment until an
+# OIDC authorization-code contract is explicitly implemented and validated.
+oidc:
+  issuer: https://MCF-APPROVED-ENROLLMENT-IDP.example/
+  clientId: MCF-AGENTDESKTOP
+  redirectUri: http://127.0.0.1:51327/callback
+
+tls: /etc/agentdesktop/tls
+
+gatewayJwt:
+  issuer: agentdesktop-controller
+  keyId: agentdesktop
+  lifetime: 5m
+  privateKey: /etc/agentdesktop/secrets/gateway-jwt-private.pem
